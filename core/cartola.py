@@ -4,13 +4,13 @@ import os.path
 import json
 import httplib
 import itertools
-import time
 import requests
 import codecs
+import time
 
 
 
-CLUBES = {
+CLUBS = {
   'america-mg' : 327,
   'atletico-mg': 282,
   'atletico-pr': 293,
@@ -33,19 +33,17 @@ CLUBES = {
   'vitoria'    : 287
 }
 
-CONDICAO = {"provavel":7, "duvida":2, "suspenso":3, "contundido":5, "nulo":6}
-POSICOES = {"gol":1, "lat":2, "zag":3, "mei":4, "ata":5, "tec":6}
-
-
+STATUS = {"provavel":7, "duvida":2, "suspenso":3, "contundido":5, "nulo":6}
+POSITIONS = {"gol":1, "lat":2, "zag":3, "mei":4, "ata":5, "tec":6}
 
 
 class Cartola:
 
   def __init__(self):
-    self.atletas = sorted(self.obter_atletas(), key=lambda k: k['media_num'], reverse=True)
-    self.clubes = self.obter_clubes()
-    self.atletas_status = self.obter_atletas_status()
-    self.posicoes = self.obter_atletas_posicoes()     
+    self.players = sorted(self.get_players(), key=lambda k: k['media_num'], reverse=True)
+    self.clubs = self.get_clubs()
+    self.players_status = self.get_players_status()
+    self.positions = self.get_players_positions()     
 
   def save_cache(self, filename, content):
     with codecs.open(filename, 'wb', 'latin1') as f:
@@ -60,11 +58,12 @@ class Cartola:
   def cached(self, filename):
     return os.path.isfile(filename)
     
-  def obter_info(self, path):
+  def get_info(self, path):
     json_data = None
     data = None
-    cache_name = path.replace("/", "_") + '.cache'
-    cache_name = "%s-%s.cache" %(path[1:].replace("/", "_"), time.strftime("%d-%m-%Y"))
+    _cache_name = "%s-%s.cache" %(path[1:].replace("/", "_"), time.strftime("%d-%m-%Y"))
+    cache_name = os.path.join("./cache", _cache_name)
+
     if (self.cached(cache_name)):
       data = self.read_from_cache(cache_name)
     else:
@@ -73,40 +72,40 @@ class Cartola:
       self.save_cache(cache_name, data)
     return json.loads(data)
 
-  def obter_atletas(self):
-    return self.obter_info("/atletas/mercado")["atletas"]
+  def get_players(self):
+    return self.get_info("/atletas/mercado")["atletas"]
     
   def obter_partidas(self):
-    return self.obter_info("/partidas")["partidas"]    
+    return self.get_info("/partidas")["partidas"]    
 
-  def obter_atletas_status(self):
-    return self.obter_info("/atletas/mercado")["status"]
+  def get_players_status(self):
+    return self.get_info("/atletas/mercado")["status"]
 
-  def obter_atletas_posicoes(self):
-    return self.obter_info("/atletas/mercado")["posicoes"]
+  def get_players_positions(self):
+    return self.get_info("/atletas/mercado")["posicoes"]
 
-  def obter_clubes(self):
-    return self.obter_info("/atletas/mercado")["clubes"]
+  def get_clubs(self):
+    return self.get_info("/atletas/mercado")["clubes"]
 
-  def filtrar(self, cond):
-    atletas = []
-    for atleta in self.atletas:
-      if atleta["status_id"] not in cond['condicao_ids']: continue
-      if atleta["preco_num"] > cond["jog_preco_max"]: continue
-      if atleta["clube_id"] not in cond["clubes_ids"]: continue
-      if atleta["posicao_id"] not in cond["posicao_ids"]: continue
-      if atleta["jogos_num"] < cond["jog_num_jogos"]: continue
-      atletas.append(atleta)
+  def filter(self, cond):
+    players = []
+    for player in self.players:
+      if player["status_id"] not in cond['status_ids']: continue
+      if player["preco_num"] > cond["p_max_price"]: continue
+      if player["clube_id"] not in cond["clubs_ids"]: continue
+      if player["posicao_id"] not in cond["position_ids"]: continue
+      if player["jogos_num"] < cond["p_num_matches"]: continue
+      players.append(player)
 
-    return atletas
+    return players
 
-  def mostrar_atletas(self, atletas=None):
-    if atletas == None: atletas = self.atletas
+  def show_players(self, players=None):
+    if players == None: players = self.players
     print " %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s | %s" %\
     (
       "APELIDO".center(20), 
       "POS".center(3),
-      "TIME".center(14),
+      "CLUBE".center(14),
       "CONDICAO".center(10),
       "JOGOS",
       "PRECO",
@@ -115,51 +114,83 @@ class Cartola:
       " G ",
       " SG ",
       " RB ",
-      "CONFRONTO"
+      "PARTIDA".center(25)
     )
-    print "=" * 130
-    for atleta in atletas:
-
-      confronto = self.clubes[str(atleta['partida']["clube_casa_id"])]["abreviacao"]
-      confronto += ' x '
-      confronto += self.clubes[str(atleta['partida']["clube_visitante_id"])]["abreviacao"]
+    print "=" * 140
+    for player in players:
+      match = player['partida']
+      match_fmt = ''
+      match_fmt += self.clubs[str(match["clube_casa_id"])]["abreviacao"]
+      match_fmt += " [%2d]" %(self.clubs[str(match["clube_casa_id"])]["posicao"])
+      match_fmt += ' x '
+      match_fmt += self.clubs[str(match["clube_visitante_id"])]["abreviacao"]
+      match_fmt += " [%2d]" %(self.clubs[str(match["clube_visitante_id"])]["posicao"])
       
-      if atleta['partida']["clube_casa_id"] == atleta["clube_id"]:
-        confronto += " (C)"
+      if match["clube_casa_id"] == player["clube_id"]:
+        match_fmt += " (C)"
       else:
-        confronto += " (F)"
+        match_fmt += " (F)"
       
       print " %s | %s | %s | %s | %5d | %s | %s | %s | %s | %s | %s | %s" %\
       (
-        atleta['apelido'].ljust(20), 
-        self.posicoes[str(atleta["posicao_id"])]["abreviacao"].center(3),
-        self.clubes[str(atleta["clube_id"])]["nome"].ljust(14),
-        self.atletas_status[str(atleta["status_id"])]["nome"].center(10),
-        atleta["jogos_num"],
-        ("%.2f" %(atleta["preco_num"])).rjust(5),
-        ("%.2f" %(atleta["media_num"])).rjust(5),
-        str(atleta['scout']["A"] if "A" in atleta['scout'] else '0').rjust(3),
-        str(atleta['scout']["G"] if "G" in atleta['scout'] else '0').rjust(3),
-        str(atleta['scout']["SG"] if "SG" in atleta['scout'] else '0').rjust(4),
-        str(atleta['scout']["RB"] if "RB" in atleta['scout'] else '0').rjust(4),
-        confronto                                           
+        player['apelido'].ljust(20), 
+        self.positions[str(player["posicao_id"])]["abreviacao"].center(3),
+        self.clubs[str(player["clube_id"])]["nome"].ljust(14),
+        self.players_status[str(player["status_id"])]["nome"].center(10),
+        player["jogos_num"],
+        ("%.2f" %(player["preco_num"])).rjust(5),
+        ("%.2f" %(player["media_num"])).rjust(5),
+        str(player['scout']["A"] if "A" in player['scout'] else '0').rjust(3),
+        str(player['scout']["G"] if "G" in player['scout'] else '0').rjust(3),
+        str(player['scout']["SG"] if "SG" in player['scout'] else '0').rjust(4),
+        str(player['scout']["RB"] if "RB" in player['scout'] else '0').rjust(4),
+        match_fmt                                           
       )
     print "\n A - Assistência | G - Gol | SG - Jogos sem sofrer gol | RB - Roubo de bolas"
 
-  def obter_atletas_por_pos(self, pos, top=10, atletas=None):
-    if atletas == None: atletas = self.atletas
-    _atletas = []
-    for atleta in atletas:
-      if self.posicoes[str(atleta["posicao_id"])]["abreviacao"] != pos: continue
-      if len(_atletas) >= top: break
-      _atletas.append(atleta)
-    return _atletas
+  def get_players_by_position(self, pos, top=10, players=None):
+    if players == None: players = self.players
+    _players = []
+    for player in players:
+      if self.positions[str(player["posicao_id"])]["abreviacao"] != pos: continue
+      if len(_players) >= top: break
+      _players.append(player)
+    return _players
+    
+  def calc_media_comb(self, args, combs):
+    res = []
+    for comb in combs:
+      m_real = 0.0
+      extra = 0.0
+      price = 0.0
+      for player in comb:
+        club_id = player['clube_id']
+        adv_club_id = player['partida']["clube_visitante_id"]
+        
+        if adv_club_id == club_id:
+          adv_club_id = player['partida']["clube_casa_id"]
+          
+        club_pos = self.clubs[str(club_id)]['posicao']   
+        adv_pos = self.clubs[str(adv_club_id)]['posicao']
 
-  def escalar(self, formacao, top, verba, atletas):
-    time = []
-    preco = 0.0
+        # extra pontos baseado na diferença de posições dos teams
+        if club_pos < adv_pos: extra += (adv_pos-club_pos) * args.extra_pos
+        
+        # extra pontos caso jogue em casa
+        if player['partida']["clube_casa_id"] == player['clube_id']: extra += args.extra_home
+          
+        
+        m_real += player['media_num']
+        price += player['preco_num']
+        
+      res.append([m_real, m_real + extra, price, comb])
+    return res      
+
+  def find_teams(self, args, players):
+    team = []
+    price = 0.0
     lat = 0
-    zag, mei, ata = formacao.split('-')
+    zag, mei, ata = args.tatic.split('-')
     zag = int(zag)
     mei = int(mei)
     ata = int(ata)
@@ -167,82 +198,41 @@ class Cartola:
       lat = 2
       zag = zag - 2
     
-    top_tec = sorted(self.obter_atletas_por_pos("tec", top, atletas), key=lambda k: k['media_num'])
-    top_gol = sorted(self.obter_atletas_por_pos("gol", top, atletas), key=lambda k: k['media_num']) 
-    top_lat = sorted(self.obter_atletas_por_pos("lat", top, atletas), key=lambda k: k['media_num'])
-    top_zag = sorted(self.obter_atletas_por_pos("zag", top, atletas), key=lambda k: k['media_num'])
-    top_mei = sorted(self.obter_atletas_por_pos("mei", top, atletas), key=lambda k: k['media_num'])
-    top_ata = sorted(self.obter_atletas_por_pos("ata", top, atletas), key=lambda k: k['media_num'])
-                  
-    tecs = list(itertools.combinations(top_tec, 1))
-    gols = list(itertools.combinations(top_gol, 1))    
-    lats = list(itertools.combinations(top_lat, lat))
-    zags = list(itertools.combinations(top_zag, zag))
-    meis = list(itertools.combinations(top_mei, mei))
-    atas = list(itertools.combinations(top_ata, ata))
-       
-    time_good = None
-    cur_media = 0.0
-    cur_preco = 0.0    
+    top_tec = sorted(self.get_players_by_position("tec", args.top, players), key=lambda k: k['media_num'])
+    top_gol = sorted(self.get_players_by_position("gol", args.top, players), key=lambda k: k['media_num']) 
+    top_lat = sorted(self.get_players_by_position("lat", args.top, players), key=lambda k: k['media_num'])
+    top_zag = sorted(self.get_players_by_position("zag", args.top, players), key=lambda k: k['media_num'])
+    top_mei = sorted(self.get_players_by_position("mei", args.top, players), key=lambda k: k['media_num'])
+    top_ata = sorted(self.get_players_by_position("ata", args.top, players), key=lambda k: k['media_num'])
 
-    for tec in tecs:
-      preco = 0.0
-      for atleta in tec: preco += atleta['preco_num']
 
-      for g in gols:
-        g_preco = 0.0
-        for atleta in g: g_preco += atleta['preco_num']
-        preco += g_preco
-        if preco > verba: 
-          preco -= g_preco
-          continue
-
-        for l in lats:
-          l_preco = 0.0
-          for atleta in l: l_preco += atleta['preco_num']
-          preco += l_preco
-          if preco > verba: 
-            preco -= l_preco
-            continue
-          
-          for z in zags:
-            z_preco = 0.0
-            for atleta in z: z_preco += atleta['preco_num']
-            preco += z_preco
-            if preco > verba: 
-              preco -= z_preco
-              continue   
-            
-            for m in meis:
-              m_preco = 0.0
-              for atleta in m: m_preco += atleta['preco_num']
-              preco += m_preco
-              if preco > (verba * 0.85):
-              #if preco > verba: 
-                preco -= m_preco
-                continue   
-              
-              for a in atas:                        
-                a_preco = 0.0
-                for atleta in a: a_preco += atleta['preco_num']
-                preco += a_preco
-                if preco > verba: 
-                  preco -= a_preco
-                  continue               
-
-                time = tec + g + l + z + m + a
-                media = 0.0
-                for atleta in time: media += atleta['media_num']
+    tecs_comb = self.calc_media_comb(args, itertools.combinations(top_tec, 1))
+    gols_comb = self.calc_media_comb(args, itertools.combinations(top_gol, 1))
+    lats_comb = self.calc_media_comb(args, itertools.combinations(top_lat, lat))    
+    zags_comb = self.calc_media_comb(args, itertools.combinations(top_zag, zag))    
+    meis_comb = self.calc_media_comb(args, itertools.combinations(top_mei, mei))
+    atas_comb = self.calc_media_comb(args, itertools.combinations(top_ata, ata))             
+    
+    price = 0.0
+    m_real = 0.0
+    m_virtual = 0.0
+    
+    for t_m_real, t_m_virtual, t_price, tec in tecs_comb:
+      for g_m_real, g_m_virtual, g_price, gol in gols_comb:
+        for l_m_real, l_m_virtual, l_price, lats in lats_comb:
+          for z_m_real, z_m_virtual, z_price, zags in zags_comb:
+            for m_m_real, m_m_virtual, m_price, meis in meis_comb:
+              for a_m_real, a_m_virtual, a_price, atas in atas_comb:
+                temp_price = t_price + g_price + z_price + l_price + m_price + a_price
+                temp_m_real = t_m_real + g_m_real + z_m_real + l_m_real + m_m_real + a_m_real
+                temp_m_virtual = t_m_virtual + g_m_virtual + z_m_virtual + l_m_virtual + m_m_virtual + a_m_virtual
                 
-                if media > cur_media:
-                  time_good = time
-                  cur_media = media
-                  cur_preco = preco
-                  self.mostrar_atletas(time)
-                  print " Preco: %.2f | Média: %.2f\n\n" %(preco, media)                  
-                  
-                preco -= a_preco
-              preco -= m_preco
-            preco -= z_preco   
-          preco -= l_preco
-        preco -= g_preco      
+                if temp_m_virtual > m_virtual and temp_price <= args.budget:
+                  m_virtual = temp_m_virtual
+                  price = temp_price
+                  self.show_players(tec+gol+lats+zags+meis+atas)
+                  print " price: %.2f | Média Real: %.2f | Média Virtual: %.2f\n\n" %(price, temp_m_real, m_virtual) 
+                
+            
+       
+       

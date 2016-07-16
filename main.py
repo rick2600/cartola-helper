@@ -7,25 +7,25 @@ from core.arg_parser import ArgParser
 
 
 def normalize(args):
-  clubes_ids = []
-  condicao_ids = []
-  posicao_ids = []
+  clubs_ids = []
+  status_ids = []
+  position_ids = []
 
-  for clube in args.jog_clube:
-    clubes_ids.append(CLUBES[clube])
+  for clube in args.p_clubs:
+    clubs_ids.append(CLUBS[clube])
 
-  for condname in args.jog_condicao:
-    condicao_ids.append(CONDICAO[condname])
+  for condname in args.p_status:
+    status_ids.append(STATUS[condname])
 
-  for posicao in args.jog_posicao:
-    posicao_ids.append(POSICOES[posicao])
+  for position in args.p_pos:
+    position_ids.append(POSITIONS[position])
 
   return {
-    'clubes_ids': clubes_ids, 
-    'condicao_ids': condicao_ids, 
-    'jog_num_jogos': args.jog_num_jogos, 
-    'jog_preco_max': args.jog_preco_max,
-    'posicao_ids': posicao_ids
+    'clubs_ids': clubs_ids, 
+    'status_ids': status_ids, 
+    'p_num_matches': args.p_num_matches, 
+    'p_max_price': args.p_max_price,
+    'position_ids': position_ids
   }
 
 
@@ -34,22 +34,23 @@ def main():
   args = parser.parse_args()
 
   print args
-  filtro = normalize(args)
+  cond = normalize(args)
 
   cartola = Cartola()
   chance_de_gol = ChanceDeGol()
 
-  atletas = cartola.filtrar(filtro)
+  players = cartola.filter(cond)
   
-  if args.mostrar_prob:
+  if args.show_prob:
     print "Próximos jogos:"
-    chance_de_gol.mostrar_probabilidades_prox_jogos()
+    chance_de_gol.show_prob_next_matches()
 
-  if args.mostrar:
-    cartola.mostrar_atletas(atletas)
+  if args.show:
+    cartola.show_players(players)
 
-  if args.escalar:
-    cartola.escalar(args.formacao, args.top, args.verba, atletas) 
+  if args.find_teams:
+    #cartola.find_teams(args.tatic, args.top, args.budget, players) 
+    cartola.find_teams(args, players) 
 
 
 main()

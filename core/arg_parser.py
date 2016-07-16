@@ -2,7 +2,7 @@
 
 import argparse
 
-CLUBES = [
+CLUBS = [
   'america-mg', 
   'atletico-mg', 
   'atletico-pr', 
@@ -25,8 +25,8 @@ CLUBES = [
   'vitoria'
 ]
 
-CONDICAO = ["provavel", "duvida", "suspenso", "contundido", "nulo"]
-POSICOES = ["gol", "lat", "zag", "mei", "ata", "tec"]
+STATUS = ["provavel", "duvida", "suspenso", "contundido", "nulo"]
+POSITIONS = ["gol", "lat", "zag", "mei", "ata", "tec"]
 
 
 class ArgParser:
@@ -40,50 +40,57 @@ class ArgParser:
     #self.parser = self.subparsers.add_parser('cartola')
     #self.chancedegol_parser = self.subparsers.add_parser('chancedegol')
 
-    self.parser.add_argument('--verba', 
+    self.parser.add_argument('--budget', 
       type=float, 
       default=0.0, 
-      help='verba disponível')
-    self.parser.add_argument('--formacao', 
+      help='available budget to buy players')
+    self.parser.add_argument('--tatic', 
       default="4-4-2",
       choices=["3-4-3","3-5-2","4-3-3","4-4-2","4-5-1","5-3-2","5-4-1"],
-      help='formacao')
-    self.parser.add_argument('--jog-condicao', 
-      default=CONDICAO,
+      help='tatic')
+    self.parser.add_argument('--p-status', 
+      default=STATUS,
       nargs='+',
-      choices=CONDICAO,
-      help="condição do jogador")
-    self.parser.add_argument('--jog-preco-max', 
+      choices=STATUS,
+      help="player status")
+    self.parser.add_argument('--p-max-price', 
       type=float, 
       default=100.0, 
-      help='preco máximo do jogador')
-    self.parser.add_argument('--jog-num-jogos', 
+      help='max price of a player')
+    self.parser.add_argument('--p-num-matches', 
       type=int, 
       default=1, 
-      help='filtrar por número de jogos')
-    self.parser.add_argument('--jog-clube', 
-      default=CLUBES,
+      help='minimum played matches of a player')
+    self.parser.add_argument('--p-clubs', 
+      default=CLUBS,
       nargs='+',
-      choices=CLUBES,
-      help='filtrar por clubes')
-    self.parser.add_argument('--jog-posicao', 
-      default=POSICOES,
+      choices=CLUBS,
+      help='filter by clubs')
+    self.parser.add_argument('--p-pos', 
+      default=POSITIONS,
       nargs='+',
-      choices=POSICOES,
-      help='filtrar por posições')
-    self.parser.add_argument('--mostrar', 
+      choices=POSITIONS,
+      help='filter by positions')
+    self.parser.add_argument('--show', 
       action='store_true',
-      help='mostrar resultado')
-    self.parser.add_argument('--escalar', 
+      help='show results')
+    self.parser.add_argument('--find-teams', 
       action='store_true',
-      help='encontra bons times baseado no filtro')
+      help='find good ranked teams basead on filters')
     self.parser.add_argument('--top', 
       type=int, 
       default=8, 
-      help='escalar usando os top jogadores de cada posição')
-    self.parser.add_argument('--mostrar-prob', 
+      help='filter by top players in each position')
+    self.parser.add_argument('--show-prob', 
       action='store_true',
-      help='mostrar probabilidade de vitória dos clubes')
-
+      help='show probability of victory of clubs')
+    self.parser.add_argument('--extra-pos', 
+      type=float, 
+      default=0.0, 
+      help='extra points for player based on club vs advserary rank position')
+    self.parser.add_argument('--extra-home', 
+      type=float, 
+      default=0.0, 
+      help='extra points for player if he plays at home')
   def parse_args(self):
     return self.parser.parse_args()
